@@ -1,9 +1,8 @@
 library(DESeq2)
-library(plotly)
 library(VennDiagram)
 library(UpSetR)
 library(grid)
-# library(biomaRt)
+library(biomaRt)
 library(pheatmap)
 library(RColorBrewer)
 library(clusterProfiler)
@@ -130,88 +129,46 @@ top_l2fc <- function(data, ascend=F, top=20){
   return(d.top)
 }
 
-lollipop_plot <- function(data, point_color="#e1af00"){
-  if(grepl("down",deparse(substitute(data)))){
-    ggplot(data, aes(x=log2FoldChange, y=gene, label=round(log2FoldChange, 2)))+
-      geom_segment(aes(x=0, y=gene, xend=log2FoldChange,yend=gene), size=2,color=point_color)+
-      geom_point(stat = "identity", size = 15, color=point_color)+
-      geom_text(color="white",size=4, fontface="bold")+
-      scale_x_continuous(limits = c(-10,0), expand = c(0,0))+
-      scale_y_discrete(position = "right")+
-      theme_bw()+
-      theme(panel.background = element_rect(fill = "transparent", colour=NA),
-            plot.background = element_rect(fill = "transparent", colour=NA),
-            legend.background = element_rect(fill = "transparent", colour=NA),
-            legend.box.background = element_rect(fill = "transparent", colour = NA),
-            legend.key = element_rect(fill = "transparent", colour = NA),
-            panel.border = element_blank(),
-            axis.text.y = element_text(size=12, face="bold.italic", colour = "#262f46"),
-            axis.text.x = element_blank(),
-            axis.title = element_blank(),
-            panel.grid = element_blank(),
-            axis.ticks = element_blank())
-  }
-  else{
-    ggplot(data, aes(x=log2FoldChange, y=gene, label=round(log2FoldChange, 2)))+
-      geom_segment(aes(x=0, y=gene, xend=log2FoldChange,yend=gene), size=2,color=point_color)+
-      geom_point(stat = "identity", size = 15, color=point_color)+
-      geom_text(color="white",size=4, fontface="bold")+
-      scale_x_continuous(limits = c(0,10), expand = c(0,0))+
-      theme_bw()+
-      theme(panel.background = element_rect(fill = "transparent", colour=NA),
-            plot.background = element_rect(fill = "transparent", colour=NA),
-            legend.background = element_rect(fill = "transparent", colour=NA),
-            legend.box.background = element_rect(fill = "transparent", colour = NA),
-            legend.key = element_rect(fill = "transparent", colour = NA),
-            panel.border = element_blank(),
-            axis.text.y = element_text(size=12, face="bold.italic", colour = "#262f46"),
-            axis.text.x = element_blank(),
-            axis.title = element_blank(),
-            panel.grid = element_blank(),
-            axis.ticks = element_blank())
-  }
-
-}
-
-
-DEGbar_plot <- function(data, point_color="#e1af00"){
-  if(grepl("down",deparse(substitute(data)))){
-    ggplot(data, aes(x=log2FoldChange, y=gene, label=round(log2FoldChange, 2)))+
-      geom_segment(aes(x=0, y=gene, xend=log2FoldChange,yend=gene), size=8,color=point_color)+
-      geom_text(color="white",size=4, hjust=0, nudge_x = 0.1)+
-      scale_x_continuous(limits = c(-10,0), expand = c(0,0))+
-      scale_y_discrete(position = "right")+
-      theme_bw()+
-      theme(panel.background = element_rect(fill = "transparent", colour=NA),
-            plot.background = element_rect(fill = "transparent", colour=NA),
-            legend.background = element_rect(fill = "transparent", colour=NA),
-            legend.box.background = element_rect(fill = "transparent", colour = NA),
-            legend.key = element_rect(fill = "transparent", colour = NA),
-            panel.border = element_blank(),
-            axis.text.y = element_text(size=12, colour = "black", face="italic"),
-            axis.text.x = element_blank(),
-            axis.title = element_blank(),
-            panel.grid = element_blank(),
-            axis.ticks = element_blank())
-  }
-  else{
-    ggplot(data, aes(x=log2FoldChange, y=gene, label=round(log2FoldChange, 2)))+
-      geom_segment(aes(x=0, y=gene, xend=log2FoldChange,yend=gene), size=8,color=point_color)+
-      geom_text(color="white",size=4, hjust=1, nudge_x = -0.1)+
-      scale_x_continuous(limits = c(0,10), expand = c(0,0))+
-      theme_bw()+
-      theme(panel.background = element_rect(fill = "transparent", colour=NA),
-            plot.background = element_rect(fill = "transparent", colour=NA),
-            legend.background = element_rect(fill = "transparent", colour=NA),
-            legend.box.background = element_rect(fill = "transparent", colour = NA),
-            legend.key = element_rect(fill = "transparent", colour = NA),
-            panel.border = element_blank(),
-            axis.text.y = element_text(size=12, colour = "black", face="italic"),
-            axis.text.x = element_blank(),
-            axis.title = element_blank(),
-            panel.grid = element_blank(),
-            axis.ticks = element_blank())
-  }
+top_l2fc_plot <- function(deg_data, point_color, limit, y_offset=0.3, x_offset=0.125, switch=16){
+  deg.up <- top_l2fc(deg_data)
+  deg.up$rank <- c(20:1)
+  deg.up$label <- deg.up$log2FoldChange+y_offset
+  deg.up[deg.up$rank>switch,colname_index("label",deg.up)] <- deg.up[deg.up$rank>switch,colname_index("label",deg.up)] - 2*y_offset
+  deg.up$label_x <- deg.up$rank+x_offset
+  deg.up[deg.up$rank>switch,colname_index("label_x",deg.up)] <- deg.up[deg.up$rank>switch,colname_index("label_x",deg.up)] - 2*x_offset
+  deg.up$hjust <- 0
+  deg.up[deg.up$rank>switch,colname_index("hjust",deg.up)] <- 1
+  deg.up$vjust <- 0
+  deg.up[deg.up$rank>switch,colname_index("vjust",deg.up)] <- 1
+  
+  deg.down <- top_l2fc(deg_data,T)
+  deg.down$rank <- c(20:1)
+  deg.down$label <- deg.down$log2FoldChange-y_offset
+  deg.down[deg.down$rank>switch,colname_index("label",deg.down)] <- deg.down[deg.down$rank>switch,colname_index("label",deg.down)] + 2*y_offset
+  deg.down$label_x <- deg.down$rank-x_offset
+  deg.down[deg.down$rank>switch,colname_index("label_x",deg.down)] <- deg.down[deg.down$rank>switch,colname_index("label_x",deg.down)] + 2*x_offset
+  deg.down$hjust <- 1
+  deg.down[deg.down$rank>switch,colname_index("hjust",deg.down)] <- 0
+  deg.down$vjust <- 1
+  deg.down[deg.down$rank>switch,colname_index("vjust",deg.down)] <- 0
+  
+  deg.top <- rbind(deg.up,deg.down)
+  
+  ggplot(deg.top, aes(x=rank, y=log2FoldChange, label=gene))+
+    geom_point(size=4, color=point_color)+
+    geom_text(aes(y=label, x=label_x), angle=45, hjust=deg.top$hjust, vjust=deg.top$vjust, size=6)+
+    geom_hline(yintercept=0)+
+    scale_y_continuous(limits = c(-limit,limit), expand = c(0,0))+
+    xlim(limits = c(0.5,20.5))+
+    theme_classic()+
+    theme(axis.text.y=element_text(size=15),
+          axis.title.y=element_text(size=15),
+          axis.title.x=element_blank(),
+          axis.text.x=element_blank(),
+          axis.ticks.x=element_blank(),
+          axis.line.x = element_blank(),
+          panel.background = element_rect(fill = "transparent", colour=NA),
+          plot.background = element_rect(fill = "transparent", colour=NA))
   
 }
 
@@ -234,9 +191,9 @@ balloon_prep <- function(data){
 
 balloon_plot <- function(data, point_color="Grey60"){
   ggplot(data, aes(x=gene, y=population)) +
-    geom_point(aes(size=avg.count, shape=designation), color=point_color)+
+    geom_point(aes(size=avg.count/500, shape=designation), color=point_color)+
     scale_shape_manual(values=c(16,15))+
-    scale_size_area( max_size = 10, breaks = c(0,1000,2000,3000,4000,5000,6000)) +
+    scale_size_identity(guide="legend") +
     scale_y_discrete(limits=rev)+
     ylab("gene")+
     theme_bw()+
@@ -513,35 +470,15 @@ memory.deg.down.20 <- top_l2fc(memDPpop.deg,T)
 inf.deg.up.20 <- top_l2fc(memDPinf.deg)
 inf.deg.down.20 <- top_l2fc(memDPinf.deg,T)
 
-lollipop_plot(naive.deg.up.20)
-ggsave("0_naiveDEG-up20.eps", bg="transparent", width = 542, height = 532, units = "px")
-DEGbar_plot(naive.deg.up.20)
-ggsave("0_naiveDEG-up20.eps", bg="transparent", width = 150, height = 150, units = "mm", device = cairo_ps)
 
-lollipop_plot(naive.deg.down.20)
-ggsave("0_naiveDEG-down20.pdf", bg="transparent", width = 210, height = 297, units = "mm")
-DEGbar_plot(naive.deg.down.20)
-ggsave("0_naiveDEG-down20.eps", bg="transparent", width = 150, height = 150, units = "mm", device = cairo_ps)
+top_l2fc_plot(naiveDPpop.deg, point_color = "#e1af00", limit = 10)
+ggsave("0_naiveDEG_20.eps", bg="transparent", width = 350, height = 100, units = "mm", device = cairo_ps)
 
-lollipop_plot(memory.deg.up.20,"#3c9ab2")
-ggsave("0_memoryDEG-up20.pdf", bg="transparent", width = 210, height = 297, units = "mm")
-DEGbar_plot(memory.deg.up.20,"#3c9ab2")
-ggsave("0_memoryDEG-up20.eps", bg="transparent", width = 150, height = 150, units = "mm", device = cairo_ps)
+top_l2fc_plot(memDPpop.deg, point_color = "#3c9ab2", limit = 9, switch=17) + scale_y_continuous(limit=c(-9,9),breaks = seq(-9, 9, by = 3))
+ggsave("0_memoryDEG_20.eps", bg="transparent", width = 350, height = 100, units = "mm", device = cairo_ps)
 
-lollipop_plot(memory.deg.down.20,"#3c9ab2")
-ggsave("0_memoryDEG-down20.pdf", bg="transparent", width = 210, height = 297, units = "mm")
-DEGbar_plot(memory.deg.down.20,"#3c9ab2")
-ggsave("0_memoryDEG-down20.eps", bg="transparent", width = 150, height = 150, units = "mm", device = cairo_ps)
-
-lollipop_plot(inf.deg.up.20,"#fd6467")
-ggsave("0_infDEG-up20.pdf", bg="transparent", width = 210, height = 297, units = "mm")
-DEGbar_plot(inf.deg.up.20,"#fd6467")
-ggsave("0_infDEG-up20.eps", bg="transparent", width = 150, height = 150, units = "mm", device = cairo_ps)
-
-lollipop_plot(inf.deg.down.20,"#fd6467")
-ggsave("0_infDEG-down20.pdf", bg="transparent", width = 210, height = 297, units = "mm")
-DEGbar_plot(inf.deg.down.20,"#fd6467")
-ggsave("0_infDEG-down20.eps", bg="transparent", width = 150, height = 150, units = "mm", device = cairo_ps)
+top_l2fc_plot(memDPinf.deg, point_color = "#fd6467", limit = 8, switch=18)
+ggsave("0_infDEG_20.eps", bg="transparent", width = 450, height = 100, units = "mm", device = cairo_ps)
 
 
 #UpSet plot with up- and downregulated genes
@@ -612,28 +549,18 @@ deg.updown.upset.acttax.plot
 dev.off()
 
 
-#Combine the 3 DEG lists and make heatmap
+#Combine the 3 DEG lists
 deg.all <- unique(c(naiveDPpop.deg$ensgene, memDPpop.deg$ensgene, memDPinf.deg$ensgene))
-
-heat.deg_all <- heat_ds(spleen.vst.assay, deg.all, names.allsamples)
-heat.deg_all <- heat.deg_all[,colname_index(rownames(heat.order),heat.deg_all)]
-pheatmap(heat.deg_all, fontsize_row = 8, scale = "row", cluster_cols = F, show_rownames = F,
-         treeheight_row = 0,treeheight_col = 0, color = redblue, border_color = NA)
-
-
-pheatmap(heat.deg_all, fontsize_row = 5, scale = "row", cluster_cols = F,
-         treeheight_row = 0,treeheight_col = 0, color = redblue, border_color = NA) #Save PDF as 8.27x24 inches
-
 
 #Balloon Plots for combined DEG list
 deg.all.tkf <- filter(ens.go.tkf, ensgene %in% deg.all)
 deg.all.tkf.desig <- designate(deg.all.tkf$ensgene, ens.go.mmb$ensgene,"membrane",setdiff(ens.all.go$ensgene,ens.go.mmb$ensgene),"non-membrane")
 deg.all.tkf.prep <- balloon_prep(deg.all.tkf.desig)
 ggplot(deg.all.tkf.prep, aes(x=gene, y=population)) +
-  geom_point(aes(size=avg.count, shape=designation), color="#941414")+
+  geom_point(aes(size=avg.count/500, shape=designation), color="#941414")+
   scale_shape_manual(values=c(15))+
   scale_y_discrete(limits=rev)+
-  scale_size_area( max_size = 10, breaks = c(0,1000,2000,3000,4000,5000,6000)) +
+  scale_size_identity(guide="legend") +
   ylab("gene")+
   theme_bw()+
   theme(panel.background = element_rect(fill = "transparent", colour=NA),
@@ -669,12 +596,12 @@ ggsave("0_balloon_deg-all_act.eps", bg="transparent", width = 450, height = 80, 
 deg.all.acttax <- filter(deg.all.no_tkf.desig, designation=="activation & migration")
 deg.all.acttax.desig <- designate(deg.all.acttax$ensgene, ens.go.mmb$ensgene,"membrane",setdiff(ens.all.go$ensgene,ens.go.mmb$ensgene),"non-membrane")
 balloon_plot(balloon_prep(deg.all.acttax.desig), "#6e4a99")
-ggsave("0_balloon_deg-all_acttax.eps", bg="transparent", width = 250, height = 80, unit="mm", device = cairo_ps)
+ggsave("0_balloon_deg-all_acttax.eps", bg="transparent", width = 340, height = 80, unit="mm", device = cairo_ps)
 
 deg.all.tax <- filter(deg.all.no_tkf.desig, designation=="migration")
 deg.all.tax.desig <- designate(deg.all.tax$ensgene, ens.go.mmb$ensgene,"membrane",setdiff(ens.all.go$ensgene,ens.go.mmb$ensgene),"non-membrane")
 balloon_plot(balloon_prep(deg.all.tax.desig), "#f27c48")
-ggsave("0_balloon_deg-all_tax.eps", bg="transparent", width = 225, height = 80, unit="mm", device = cairo_ps)
+ggsave("0_balloon_deg-all_tax.eps", bg="transparent", width = 275, height = 80, unit="mm", device = cairo_ps)
 
 deg.all.none <- filter(deg.all.no_tkf.desig, designation=="other")
 deg.all.none.desig <- designate(deg.all.none$ensgene, ens.go.mmb$ensgene,"membrane",setdiff(ens.all.go$ensgene,ens.go.mmb$ensgene),"non-membrane")
@@ -760,9 +687,9 @@ ggplot(memDPinf.deg, aes(x=log2FoldChange, y=-log10(padj))) +
   scale_y_continuous(breaks = seq(0,160,20))+
   geom_point(size =2, color = "#FD6467")+
   geom_text(data=filter(filter(memDPinf.deg, ensgene %in% curate_list), !ensgene %in% highlight_list),
-            aes(label=gene, y=-log10(padj), x=log2FoldChange), nudge_x = 0.1, nudge_y = 2, size=3, hjust="left")+
+            aes(label=gene, y=-log10(padj), x=log2FoldChange), nudge_x = 0.1, nudge_y = 2, size=3.5, hjust="left")+
   geom_text(data=filter(filter(memDPinf.deg, ensgene %in% curate_list), ensgene %in% highlight_list),
-            aes(label=gene, y=-log10(padj), x=log2FoldChange), nudge_x = 0.1, nudge_y = 2, size=3.5, hjust="left",fontface="bold")+
+            aes(label=gene, y=-log10(padj), x=log2FoldChange), nudge_x = 0.1, nudge_y = 2, size=4.75, hjust="left",fontface="bold")+
   theme_bw()+
   theme(panel.background = element_rect(fill = "transparent", colour=NA),
         plot.background = element_rect(fill = "transparent", colour=NA),
@@ -782,12 +709,12 @@ ggsave("0_volcano_DP-DP.eps", bg="transparent", width = 150, height = 150, units
 #Volcano plot of mem DP vs SP
 ggplot(memDPpop.deg, aes(x=log2FoldChange, y=-log10(padj))) +
   scale_y_continuous(breaks = seq(0,160,20))+
-  scale_x_continuous(breaks=seq(-7.5,8.5,2.5), limits = c(-7.5,8.5))+
+  scale_x_continuous(breaks=seq(-7.5,9,2.5), limits = c(-7.5,9))+
   geom_point(size =2, color = "#3C9AB2")+
   geom_text(data=filter(filter(memDPpop.deg, ensgene %in% curate_list), !ensgene %in% highlight_list),
-            aes(label=gene, y=-log10(padj), x=log2FoldChange), nudge_x = 0.1, nudge_y = 2, size=3, hjust="left")+
+            aes(label=gene, y=-log10(padj), x=log2FoldChange), nudge_x = 0.1, nudge_y = 2, size=3.5, hjust="left")+
   geom_text(data=filter(filter(memDPpop.deg, ensgene %in% curate_list), ensgene %in% highlight_list),
-            aes(label=gene, y=-log10(padj), x=log2FoldChange), nudge_x = 0.1, nudge_y = 2, size=3.5, hjust="left",fontface="bold")+
+            aes(label=gene, y=-log10(padj), x=log2FoldChange), nudge_x = 0.1, nudge_y = 2, size=4.75, hjust="left",fontface="bold")+
   theme_bw()+
   theme(panel.background = element_rect(fill = "transparent", colour=NA),
         plot.background = element_rect(fill = "transparent", colour=NA),
@@ -812,9 +739,9 @@ ggplot(naiveDPpop.deg, aes(x=log2FoldChange, y=-log10(padj))) +
   scale_x_continuous(breaks=seq(-7.5,11,2.5), limits = c(-7.5,11))+
   geom_point(size =2, color = "#e1af00")+
   geom_text(data=filter(filter(naiveDPpop.deg, ensgene %in% curate_list), !ensgene %in% highlight_list),
-            aes(label=gene, y=-log10(padj), x=log2FoldChange), nudge_x = 0.1, nudge_y = 2, size=3, hjust="left")+
+            aes(label=gene, y=-log10(padj), x=log2FoldChange), nudge_x = 0.1, nudge_y = 2, size=3.5, hjust="left")+
   geom_text(data=filter(filter(naiveDPpop.deg, ensgene %in% curate_list), ensgene %in% highlight_list),
-            aes(label=gene, y=-log10(padj), x=log2FoldChange), nudge_x = 0.1, nudge_y = 2, size=3.5, hjust="left",fontface="bold")+
+            aes(label=gene, y=-log10(padj), x=log2FoldChange), nudge_x = 0.1, nudge_y = 2, size=4.75, hjust="left",fontface="bold")+
   theme_bw()+
   theme(panel.background = element_rect(fill = "transparent", colour=NA),
         plot.background = element_rect(fill = "transparent", colour=NA),
